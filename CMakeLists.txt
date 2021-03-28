@@ -14,13 +14,16 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # required libraries
 find_package(SuiteParse REQUIRED)
-find_package(Eigen3 REQUIRED)
+# find_package(Eigen3 REQUIRED)
+find_package(Eigen3 REQUIRED PATHS /home/duyanwei/slam_ws/code/3rdparty/eigen-3.3.3)
 find_package(Boost COMPONENTS system thread) 
 
 # optional libraries
 find_package(LibZip QUIET)
-find_package(Pangolin 0.2 QUIET)
-find_package(OpenCV QUIET)
+# find_package(Pangolin 0.2 QUIET)
+find_package(Pangolin 0.2 REQUIRED PATHS /home/duyanwei/slam_ws/code/3rdparty/Pangolin/build)
+# find_package(OpenCV QUIET)
+find_package(OpenCV 3.4.1 REQUIRED PATHS /home/duyanwei/slam_ws/code/3rdparty/opencv-3.4.1/build)
 
 # flags
 add_definitions("-DENABLE_SSE")
