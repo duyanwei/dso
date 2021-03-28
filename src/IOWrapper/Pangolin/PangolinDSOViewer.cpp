@@ -291,8 +291,11 @@ void PangolinDSOViewer::run()
 
 	printf("QUIT Pangolin thread!\n");
 	printf("I'll just kill the whole process.\nSo Long, and Thanks for All the Fish!\n");
-
-	exit(1);
+	
+	//--- added by yanwei(duyanwei0702@gmail.com), starts here ---//
+	running = false; // end program properly
+	// exit(1);
+	//--- added by yanwei(duyanwei0702@gmail.com), ends here ---//
 }
 
 

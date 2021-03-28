@@ -79,6 +79,13 @@ public:
     virtual void join() override;
 
     virtual void reset() override;
+
+    // end program properly
+    bool isRunning() const
+    {
+    	return running;
+    }
+
 private:
 
 	bool needReset;
@@ -86,7 +93,8 @@ private:
 	void drawConstraints();
 
 	boost::thread runThread;
-	bool running;
+	// bool running;
+	std::atomic_bool running;
 	int w,h;
 
 

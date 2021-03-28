@@ -69,6 +69,7 @@ bool useSampleOutput=false;
 int mode=0;
 
 bool firstRosSpin=false;
+std::atomic_bool exitSignalReceived;
 
 using namespace dso;
 
@@ -76,7 +77,11 @@ using namespace dso;
 void my_exit_handler(int s)
 {
 	printf("Caught signal %d\n",s);
-	exit(1);
+	
+	//--- added by yanwei(duyanwei0702@gmail.com), starts here ---//
+	exitSignalReceived = true; // end program properly
+	// exit(1);
+	//--- added by yanwei(duyanwei0702@gmail.com), ends here ---/
 }
 
 void exitThread()
@@ -88,6 +93,7 @@ void exitThread()
 	sigaction(SIGINT, &sigIntHandler, NULL);
 
 	firstRosSpin=true;
+	exitSignalReceived = false; // end program properly
 	while(true) pause();
 }
 
@@ -346,6 +352,48 @@ void parseArgument(char* arg)
 		return;
 	}
 
+	//--- added by yanwei(duyanwei0702@gmail.com), starts here ---//
+	if(1==sscanf(arg,"pointdensity=%f", &foption))
+	{
+		setting_desiredPointDensity = foption;
+		setting_desiredImmatureDensity = (int)(setting_desiredPointDensity * 0.75);
+		printf("point density = %f!\n", setting_desiredPointDensity);
+		printf("immature density = %f!\n", setting_desiredImmatureDensity);
+		return;
+	}
+
+	if(1==sscanf(arg,"maxFrames=%d", &option))
+	{
+		setting_maxFrames = option;
+		printf("max frames in window = %d!\n", setting_maxFrames);
+		return;
+	}
+
+	if(1==sscanf(arg,"kfGlobalWeight=%f",&foption))
+	{
+		setting_kfGlobalWeight = foption;
+		printf("kfGlobalWeight %f!\n", setting_kfGlobalWeight);
+		return;
+	}
+	
+	if(1==sscanf(arg,"reTrackThreshold=%f",&foption))
+	{
+		setting_reTrackThreshold = foption;
+		printf("reTrackThreshold %f!\n", setting_reTrackThreshold);
+		return;
+	}
+
+	// if(1==sscanf(arg,"debugGoodFeature=%d",&option))
+	// {
+	// 	if(option==1)
+	// 	{
+	// 		debugGoodFeature = true;
+	// 		printf("debugGoodFeature, can be slow!!!\n");
+	// 	}
+	// 	return;
+	// }
+	//--- added by yanwei(duyanwei0702@gmail.com), ends here ---//
+
 	printf("could not parse argument \"%s\"!!!!\n", arg);
 }
 
@@ -524,6 +572,18 @@ int main( int argc, char** argv )
                     break;
             }
 
+            //--- added by yanwei(duyanwei0702@gmail.com), starts here ---//
+            if (viewer && !viewer->isRunning())
+            {
+            	printf("It seems that someone shuts down the viewer");
+            	break;
+            }
+            if (exitSignalReceived)
+            {
+            	printf("It seems that someone wants an early termination");
+            	break;
+            }
+            //--- added by yanwei(duyanwei0702@gmail.com), ends here ---/
         }
         fullSystem->blockUntilMappingIsFinished();
         clock_t ended = clock();
