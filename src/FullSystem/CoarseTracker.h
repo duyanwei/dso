@@ -32,7 +32,7 @@
 #include "OptimizationBackend/MatrixAccumulators.h"
 #include "IOWrapper/Output3DWrapper.h"
 
-
+#include "Tool/PixelFlow.h"
 
 
 namespace dso
