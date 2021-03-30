@@ -248,7 +248,7 @@ void FullSystem::printResult(std::string file)
 	boost::unique_lock<boost::mutex> crlock(shellPoseMutex);
 
 	std::ofstream myfile;
-	myfile.open (file.c_str());
+	myfile.open (file + "_keyframe_result.txt");
 	myfile << std::setprecision(15);
 
 	for(FrameShell* s : allFrameHistory)
@@ -258,11 +258,28 @@ void FullSystem::printResult(std::string file)
 		if(setting_onlyLogKFPoses && s->marginalizedAt == s->id) continue;
 
 		myfile << s->timestamp <<
-			" " << s->camToWorld.translation().transpose()<<
+			" " << s->camToWorld.translation().x()<<
+			" " << s->camToWorld.translation().y()<<
+			" " << s->camToWorld.translation().z()<<
 			" " << s->camToWorld.so3().unit_quaternion().x()<<
 			" " << s->camToWorld.so3().unit_quaternion().y()<<
 			" " << s->camToWorld.so3().unit_quaternion().z()<<
 			" " << s->camToWorld.so3().unit_quaternion().w() << "\n";
+	}
+	myfile.close();
+
+	// save tracking result
+	myfile.open(file + "_tracking_result.txt");
+	for (const auto& s : tracking_results)
+	{
+		myfile << s.timestamp <<
+			" " << s.camToWorld.translation().x()<<
+			" " << s.camToWorld.translation().y()<<
+			" " << s.camToWorld.translation().z()<<
+			" " << s.camToWorld.so3().unit_quaternion().x()<<
+			" " << s.camToWorld.so3().unit_quaternion().y()<<
+			" " << s.camToWorld.so3().unit_quaternion().z()<<
+			" " << s.camToWorld.so3().unit_quaternion().w() << "\n";
 	}
 	myfile.close();
 }
@@ -892,6 +909,8 @@ void FullSystem::addActiveFrame( ImageAndExposure* image, int id )
 
         for(IOWrap::Output3DWrapper* ow : outputWrapper)
             ow->publishCamPose(fh->shell, &Hcalib);
+
+        tracking_results.emplace_back(fh->shell->timestamp, fh->shell->camToWorld);
 
 
 

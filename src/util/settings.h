@@ -29,6 +29,7 @@
 #include <string>
 #include <cmath>
 
+#define ON_EuRoC
 
 namespace dso
 {

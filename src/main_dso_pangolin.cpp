@@ -55,6 +55,7 @@ std::string vignette = "";
 std::string gammaCalib = "";
 std::string source = "";
 std::string calib = "";
+std::string rtpath = "./";
 double rescale = 1;
 bool reverse = false;
 bool disableROS = false;
@@ -392,6 +393,12 @@ void parseArgument(char* arg)
 	// 	}
 	// 	return;
 	// }
+	if(1==sscanf(arg,"realtime=%s",buf))
+	{
+		rtpath = buf;
+		printf("REAL TIME TRACK SAVED AT %s!\n", rtpath.c_str());
+		return;
+	}
 	//--- added by yanwei(duyanwei0702@gmail.com), ends here ---//
 
 	printf("could not parse argument \"%s\"!!!!\n", arg);
@@ -581,7 +588,7 @@ int main( int argc, char** argv )
             if (exitSignalReceived)
             {
             	printf("It seems that someone wants an early termination");
-            	break;
+                break;
             }
             //--- added by yanwei(duyanwei0702@gmail.com), ends here ---/
         }
@@ -591,7 +598,7 @@ int main( int argc, char** argv )
         gettimeofday(&tv_end, NULL);
 
 
-        fullSystem->printResult("result.txt");
+        fullSystem->printResult(rtpath);
 
 
         int numFramesProcessed = abs(idsToPlay[0]-idsToPlay.back());
@@ -621,6 +628,11 @@ int main( int argc, char** argv )
             tmlog.close();
         }
 
+        // close the viewer, added by Yanwei (duyanwei0702@gmail.com)
+        if (viewer && viewer->isRunning())
+        {
+        	viewer->close();
+        }
     });
 
 

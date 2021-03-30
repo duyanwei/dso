@@ -315,6 +315,21 @@ private:
 	bool needToKetchupMapping;
 
 	int lastRefStopID;
+
+
+	struct FrameResult
+	{
+		double timestamp;
+		SE3    camToWorld;
+
+		FrameResult(const double _timestamp, const SE3& _camToWorld)
+			: timestamp(_timestamp), camToWorld(_camToWorld)
+		{
+
+		}
+	};
+
+	std::vector<FrameResult> tracking_results;
 };
 }
 

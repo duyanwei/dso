@@ -294,7 +294,13 @@ private:
 	inline void loadTimestamps()
 	{
 		std::ifstream tr;
+
+		#if defined ON_EuRoC
+		std::string timesFile = path.substr(0,path.find_last_of('/')) + "/data.csv";
+		#else
 		std::string timesFile = path.substr(0,path.find_last_of('/')) + "/times.txt";
+		#endif
+
 		tr.open(timesFile.c_str());
 		while(!tr.eof() && tr.good())
 		{
@@ -306,6 +312,19 @@ private:
 			double stamp;
 			float exposure = 0;
 
+
+			#if defined ON_EuRoC
+			long euroc_stamp, euroc_imgname;
+			if(2 == sscanf(buf, "%ld,%ld.png", &euroc_stamp, &euroc_imgname))
+			{
+				timestamps.push_back(double(euroc_stamp * 1e-9));
+				exposures.push_back(exposure);
+			}
+			else
+			{
+				std::cout << "undefined format in time file!" << std::endl;
+			}
+			#else
 			if(3 == sscanf(buf, "%d %lf %f", &id, &stamp, &exposure))
 			{
 				timestamps.push_back(stamp);
@@ -317,6 +336,7 @@ private:
 				timestamps.push_back(stamp);
 				exposures.push_back(exposure);
 			}
+			#endif
 		}
 		tr.close();
 
