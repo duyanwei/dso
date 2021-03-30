@@ -33,6 +33,7 @@
 #include "IOWrapper/Output3DWrapper.h"
 
 #include "Tool/PixelFlow.h"
+#include <opencv2/opencv.hpp>
 
 
 namespace dso
@@ -78,6 +79,9 @@ public:
     void debugPlotIDepthMap(float* minID, float* maxID, std::vector<IOWrap::Output3DWrapper*> &wraps);
     void debugPlotIDepthMapFloat(std::vector<IOWrap::Output3DWrapper*> &wraps);
 
+    void initializeGoodFeatureByFlow(int coarsestLvl, FrameHessian* fh, const SE3& camToRef, 
+        const double degree = 30.0, const bool vis = false);
+
 	FrameHessian* lastRef;
 	AffLight lastRef_aff_g2l;
 	FrameHessian* newFrame;
@@ -107,6 +111,10 @@ private:
 	float* pc_idepth[PYR_LEVELS];
 	float* pc_color[PYR_LEVELS];
 	int pc_n[PYR_LEVELS];
+	float* pc_Ix[PYR_LEVELS];
+	float* pc_Iy[PYR_LEVELS];
+	float* pc_selected[PYR_LEVELS];
+	bool use_selected[PYR_LEVELS];
 
 	// warped buffers
 	float* buf_warped_idepth;

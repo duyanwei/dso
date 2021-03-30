@@ -72,10 +72,12 @@ CoarseTracker::CoarseTracker(int ww, int hh) : lastRef_aff_g2l(0,0)
         pc_v[lvl] = allocAligned<4,float>(wl*hl, ptrToDelete);
         pc_idepth[lvl] = allocAligned<4,float>(wl*hl, ptrToDelete);
         pc_color[lvl] = allocAligned<4,float>(wl*hl, ptrToDelete);
+        pc_Ix[lvl] = allocAligned<4,float>(wl * hl, ptrToDelete);
+        pc_Iy[lvl] = allocAligned<4,float>(wl * hl, ptrToDelete);
+        pc_selected[lvl] = allocAligned<4,float>(wl * hl, ptrToDelete);
+    }
 
-	}
-
-	// warped buffers
+    // warped buffers
     buf_warped_idepth = allocAligned<4,float>(ww*hh, ptrToDelete);
     buf_warped_u = allocAligned<4,float>(ww*hh, ptrToDelete);
     buf_warped_v = allocAligned<4,float>(ww*hh, ptrToDelete);
@@ -256,6 +258,8 @@ void CoarseTracker::makeCoarseDepthL0(std::vector<FrameHessian*> frameHessians)
 		float* lpc_v = pc_v[lvl];
 		float* lpc_idepth = pc_idepth[lvl];
 		float* lpc_color = pc_color[lvl];
+		float* lpc_Ix = pc_Ix[lvl];
+		float* lpc_Iy = pc_Iy[lvl];
 
 
 		for(int y=2;y<hl-2;y++)
@@ -270,7 +274,8 @@ void CoarseTracker::makeCoarseDepthL0(std::vector<FrameHessian*> frameHessians)
 					lpc_v[lpc_n] = y;
 					lpc_idepth[lpc_n] = idepthl[i];
 					lpc_color[lpc_n] = dIRefl[i][0];
-
+					lpc_Ix[lpc_n] = dIRefl[i][1];
+					lpc_Iy[lpc_n] = dIRefl[i][2];
 
 
 					if(!std::isfinite(lpc_color[lpc_n]) || !(idepthl[i]>0))
@@ -395,10 +400,16 @@ Vec6 CoarseTracker::calcRes(int lvl, const SE3 &refToNew, AffLight aff_g2l, floa
 	float* lpc_v = pc_v[lvl];
 	float* lpc_idepth = pc_idepth[lvl];
 	float* lpc_color = pc_color[lvl];
+	float* lpc_selected = pc_selected[lvl];
 
 
 	for(int i=0;i<nl;i++)
 	{
+		if (debugGoodFeature && use_selected[lvl] && lpc_selected[i] < 0)
+		{
+			continue;
+		}
+
 		float id = lpc_idepth[i];
 		float x = lpc_u[i];
 		float y = lpc_v[i];
@@ -829,8 +840,115 @@ void CoarseTracker::debugPlotIDepthMapFloat(std::vector<IOWrap::Output3DWrapper*
 }
 
 
+void CoarseTracker::initializeGoodFeatureByFlow(int coarsestLvl, FrameHessian* fh, const SE3& camToRef, 
+        const double degree, const bool vis)
+{
+	// initialize all lvls to false
+	for (int lvl = PYR_LEVELS - 1; lvl >= 0; --lvl)
+	{
+		use_selected[lvl] = false;
+	}
 
+	// check coarestLvl 
+	coarsestLvl = (coarsestLvl == -1) ? (PYR_LEVELS - 1) : coarsestLvl;
+	for (int lvl = coarsestLvl; lvl >= 0; --lvl)
+	{
+		use_selected[lvl] = true;
 
+		// visualization
+		cv::Mat image(h[lvl], w[lvl], CV_8UC3);
+		if (vis)
+		{
+			for (int r = 0; r < h[lvl]; r++)
+			{
+				for (int c = 0; c < w[lvl]; c++)
+				{
+					int index = r * w[lvl] + c;
+					int v     = lastRef->dIp[lvl][index][0] * 0.9f;
+					if (v > 255)
+					{
+						v = 255;
+					}
+					image.at<cv::Vec3b>(r, c) = cv::Vec3b(v, v, v);
+				}
+			}
+		}
+
+		// compute camera velocity
+		Vec6 velocity = PixelFlow::computeVelocity(lastRef->shell->timestamp,
+			fh->shell->timestamp, fh->shell->camToTrackingRef);
+
+		// compute flow
+		const double fxl = fx[lvl];
+		const double fyl = fy[lvl];
+		const double cxl = cx[lvl];
+		const double cyl = cy[lvl];
+
+		const float threshold = std::cos(degree / 180.0 * M_PI);
+		int         num       = 0;
+		for (int i = 0; i < pc_n[lvl]; i++)
+		{
+			pc_selected[lvl][i] = 1.0; // default: selected
+
+			if (pc_idepth[lvl][i] <= 0.0) // ignore invalid depth
+			{
+				continue;
+			}
+
+			const double u = pc_u[lvl][i];
+			const double v = pc_v[lvl][i];
+			const double id = pc_idepth[lvl][i];
+
+			const Vec2 flow = PixelFlow::computeFlow(u, v, id, fxl, fyl, cxl, cyl, velocity);
+			const Vec2 grad(pc_Ix[lvl][i], pc_Iy[lvl][i]); // gradient
+
+			if (flow.norm() < 1.0) // ignore if flow is too small
+			{
+				continue;
+			}
+
+			const Vec2 normalized_flow = flow / flow.norm();
+			const Vec2 normalized_grad = grad / grad.norm();
+
+			if (std::abs(normalized_flow.dot(normalized_grad)) < threshold)
+			{
+				pc_selected[lvl][i] = -1.0;
+				num++;
+			}
+
+			if (vis)
+			{
+				const double dt = fh->shell->timestamp - lastRef->shell->timestamp;
+				const double u2 = u + flow(0) * dt;
+				const double v2 = v + flow(1) * dt;
+				
+				cv::Scalar color(0, 0, 255); // red, common pixel
+					
+				if (pc_selected[lvl][i] > 0)
+				{
+					color = cv::Scalar(0, 255, 0); // green, selected pixel
+				}
+
+				cv::line(image, cv::Point2f(u, v), cv::Point2f(u2, v2), color, 1); // kf to f
+				cv::circle(image, cv::Point2f(u, v), 1, cv::Scalar(0, 0, 255)); // kf
+			}
+		}
+
+		if (vis)
+		{
+			// cv::imwrite("./flow/" + std::to_string(lvl) + "_" + std::to_string(fh->fts_.id) + ".jpg", image);
+
+			// cv::namedWindow("pixel flow", CV_WINDOW_NORMAL);
+			// cv::imshow("pixel flow", image);
+			// cv::waitKey(1);
+		}
+
+		if ((double)num / pc_n[lvl] < 0.5)
+		{
+			use_selected[lvl] = false;
+		}
+	}
+}
 
 
 

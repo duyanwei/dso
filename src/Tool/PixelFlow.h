@@ -57,6 +57,33 @@ public:
 
     /**
      * @brief
+     *
+     * @param tr
+     * @param tf
+     * @param Trf
+     * @return Vec6
+     */
+    static Vec6 computeVelocity(const double tr, const double tf,
+                                const SE3& Trf)
+    {
+        const double dt = tf - tr;
+
+        if (dt <= 0.0)
+        {
+            throw std::runtime_error(
+                "invalid timestamp when computing camera velocity");
+        }
+
+        const Vec3 Vrf = Trf.translation() / dt;
+        const Vec3 Wrf = Trf.so3().log() / dt;
+
+        Vec6 velocity;
+        velocity << Vrf, Wrf;
+        return velocity;
+    }
+
+    /**
+     * @brief
      */
     static Vec2 computeFlow(double u, double v, double idepth, double fx,
                             double fy, double cx, double cy,

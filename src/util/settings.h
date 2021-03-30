@@ -177,7 +177,7 @@ extern bool disableReconfigure;
 
 extern bool setting_onlyLogKFPoses;
 
-
+extern bool debugGoodFeature;
 
 
 extern bool debugSaveImages;
