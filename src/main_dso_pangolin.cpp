@@ -23,6 +23,7 @@
 
 
 
+#include <numeric>
 #include <thread>
 #include <locale.h>
 #include <signal.h>
@@ -39,6 +40,7 @@
 #include "util/globalFuncs.h"
 #include "util/DatasetReader.h"
 #include "util/globalCalib.h"
+#include "util/timer.h"
 
 #include "util/NumType.h"
 #include "FullSystem/FullSystem.h"
@@ -506,7 +508,7 @@ int main( int argc, char** argv )
         clock_t started = clock();
         double sInitializerOffset=0;
 
-
+        std::vector<double> timing;
         for(int ii=0;ii<(int)idsToPlay.size(); ii++)
         {
             if(!fullSystem->initialized)	// if not initialized: reset start time.
@@ -544,8 +546,13 @@ int main( int argc, char** argv )
 
 
 
-            if(!skipFrame) fullSystem->addActiveFrame(img, i);
-
+            if(!skipFrame)
+            {
+                slam_utility::stats::TicTocTimer tic_toc_timer;
+                tic_toc_timer.tic();
+                fullSystem->addActiveFrame(img, i);
+                timing.emplace_back(tic_toc_timer.toc());
+            }
 
 
 
@@ -599,7 +606,17 @@ int main( int argc, char** argv )
 
 
         fullSystem->printResult(rtpath);
-
+        // timing stats
+        std::cout << "(IVA-SLAM) total image: " << reader->getNumImages()
+                  << "\n";
+        std::cout << "(IVA-SLAM) processed image: " << timing.size() << "\n";
+        std::sort(timing.begin(), timing.end());
+        std::cout << "(IVA-SLAM) median tracking time: "
+                    << timing.at(timing.size() / 2) << "\n";
+        double sum_timing =
+            std::accumulate(timing.begin(), timing.end(), 0.0);
+        std::cout << "(IVA-SLAM) mean tracking time: "
+                    << sum_timing / timing.size() << std::endl;
 
         int numFramesProcessed = abs(idsToPlay[0]-idsToPlay.back());
         double numSecondsProcessed = fabs(reader->getTimestamp(idsToPlay[0])-reader->getTimestamp(idsToPlay.back()));

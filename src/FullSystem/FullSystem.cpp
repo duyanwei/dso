@@ -248,7 +248,7 @@ void FullSystem::printResult(std::string file)
 	boost::unique_lock<boost::mutex> crlock(shellPoseMutex);
 
 	std::ofstream myfile;
-	myfile.open (file + "_keyframe_result.txt");
+	myfile.open (file + "_KeyFrameTrajectory.txt");
 	myfile << std::setprecision(15);
 
 	for(FrameShell* s : allFrameHistory)
@@ -269,7 +269,7 @@ void FullSystem::printResult(std::string file)
 	myfile.close();
 
 	// save tracking result
-	myfile.open(file + "_tracking_result.txt");
+	myfile.open(file + "_CameraTrajectory_tracking.txt");
 	for (const auto& s : tracking_results)
 	{
 		myfile << s.timestamp <<
